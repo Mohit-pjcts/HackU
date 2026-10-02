@@ -1,0 +1,10 @@
+node_modules/
+.env
+.env.local
+.vercel/
+.wrangler/
+reference/
+*.zip
+# local evaluation outputs (results can include screenshots)
+tools/autolabel/out/
+tools/autolabel/node_modules/
