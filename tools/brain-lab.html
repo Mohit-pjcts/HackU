@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brain Lab — screen buddy pointing tests</title>
+<style>
+  :root {
+    --bg: #111418; --panel: #1a1f26; --line: #2c333d; --text: #e6e9ee; --muted: #9aa4b2;
+    --accent: #5eb1ff; --ok: #4ade80; --bad: #f87171; --warn: #fbbf24;
+    --direct: #22d3ee; --grid: #e879f9; --refine: #fb923c; --label: #4ade80;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, Segoe UI, sans-serif; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { font-size: 16px; margin: 0 12px 0 0; }
+  .chip { padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+  .chip.ok { color: var(--ok); border-color: #2f5a3d; } .chip.bad { color: var(--bad); border-color: #6b2f2f; } .chip.warn { color: var(--warn); border-color: #6b5a2f; }
+  main { display: grid; grid-template-columns: 340px 1fr; min-height: calc(100vh - 50px); }
+  aside { border-right: 1px solid var(--line); padding: 12px 14px; overflow-y: auto; max-height: calc(100vh - 50px); }
+  section.view { padding: 12px 16px; overflow: auto; max-height: calc(100vh - 50px); }
+  fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 0 0 12px; padding: 8px 10px 10px; }
+  legend { color: var(--muted); font-size: 12px; padding: 0 4px; text-transform: uppercase; letter-spacing: .04em; }
+  label { display: block; color: var(--muted); font-size: 12px; margin: 6px 0 2px; }
+  label.inline { display: inline-flex; gap: 6px; align-items: center; margin-right: 10px; color: var(--text); font-size: 13px; }
+  input[type=text], input[type=number], input[type=password], textarea, select {
+    width: 100%; background: #0d1014; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font: inherit;
+  }
+  textarea { resize: vertical; min-height: 44px; }
+  button { background: #243042; color: var(--text); border: 1px solid #34465e; border-radius: 6px; padding: 6px 10px; font: inherit; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button.primary { background: #1f4f80; border-color: #2b6bab; }
+  button:disabled { opacity: .5; cursor: default; }
+  button.on { border-color: var(--label); color: var(--label); }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .row > * { flex: 1 1 auto; }
+  #items { max-height: 220px; overflow-y: auto; margin-top: 8px; border: 1px solid var(--line); border-radius: 6px; }
+  #items div { padding: 4px 8px; cursor: pointer; border-bottom: 1px solid var(--line); font-size: 12px; display: flex; justify-content: space-between; gap: 6px; }
+  #items div.cur { background: #1f2b3a; }
+  #items .tag { color: var(--muted); white-space: nowrap; }
+  .stage { position: relative; display: inline-block; max-width: 100%; }
+  #view { max-width: 100%; border: 1px solid var(--line); border-radius: 6px; cursor: crosshair; background: #000; display: block; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin: 8px 0; font-size: 12px; color: var(--muted); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 16px; font-size: 13px; }
+  th, td { border-bottom: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .hit { color: var(--ok); } .miss { color: var(--bad); } .ct { color: var(--warn); }
+  h2 { font-size: 14px; margin: 16px 0 4px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  #status { font-size: 12px; color: var(--muted); min-height: 18px; margin-top: 8px; white-space: pre-wrap; }
+  #sent { display: flex; gap: 8px; flex-wrap: wrap; }
+  #sent figure { margin: 0; font-size: 11px; color: var(--muted); }
+  #sent img { max-width: 260px; max-height: 160px; border: 1px solid var(--line); border-radius: 4px; display: block; }
+  .hint { color: var(--muted); font-size: 12px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } aside { max-height: none; border-right: 0; border-bottom: 1px solid var(--line); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Brain Lab</h1>
+  <span id="srv" class="chip">checking server…</span>
+  <span id="budget" class="chip"></span>
+  <span id="spend" class="chip">spent this page: $0</span>
+  <span style="flex:1"></span>
+  <label class="inline" for="code">Access code <input id="code" type="password" style="width:140px" autocomplete="off"></label>
+</header>
+<main>
+<aside>
+  <fieldset>
+    <legend>Images and labels</legend>
+    <input id="files" type="file" multiple accept="image/png,image/jpeg,application/json,.json">
+    <p class="hint">Pick screenshots (PNG/JPEG) and optionally a <code>labels.json</code>. You can also drop files on the page or paste a screenshot.</p>
+    <div class="row">
+      <button id="addBlank" title="A blank frame: the brain should answer &quot;I can't tell&quot;">+ Blank frame</button>
+      <button id="addNoise" title="An unrelated screen: the brain should answer &quot;I can't tell&quot;">+ Unrelated screen</button>
+    </div>
+    <div id="items"></div>
+    <div class="row">
+      <button id="labelBtn" title="Drag on the image to mark the true target box">Draw label box</button>
+      <select id="split" title="Which half of the labelled set this item belongs to"><option value="tune">tune</option><option value="report">report</option></select>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Step</legend>
+    <div id="stepPickWrap" hidden><label for="stepPick">From src/steps.json</label><select id="stepPick"></select></div>
+    <label for="stepId">Step id</label><input id="stepId" type="text" value="pick-magic-wand">
+    <label for="goal">Goal</label><textarea id="goal">Choose the Magic Wand tool so you can select the background by clicking it.</textarea>
+    <label for="hint">Target hint</label><input id="hint" type="text" value="A wand icon with a sparkle, in the left toolbar">
+    <label for="said">User said</label><input id="said" type="text" value="where do I click?">
+    <label class="inline"><input id="sendHint" type="checkbox" checked> send the target hint</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Modes</legend>
+    <label class="inline"><input type="checkbox" class="mode" value="direct" checked> direct</label>
+    <label class="inline"><input type="checkbox" class="mode" value="grid" checked> grid</label>
+    <label class="inline"><input type="checkbox" class="mode" value="refine" checked> refine</label>
+    <div class="row">
+      <div><label for="firstPass">Refine first pass</label><select id="firstPass"><option>direct</option><option>grid</option></select></div>
+      <div><label for="cols">Grid cols</label><input id="cols" type="number" min="2" max="26" value="12"></div>
+      <div><label for="rows">Grid rows</label><input id="rows" type="number" min="2" max="20" value="8"></div>
+    </div>
+    <div class="row">
+      <div><label for="model">Model</label><select id="model"></select></div>
+      <div><label for="tol">Hit tolerance (px)</label><input id="tol" type="number" min="0" max="50" value="0"></div>
+      <div><label for="conc">Parallel</label><select id="conc"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Run</legend>
+    <div class="row">
+      <button id="runOne" class="primary">Run on this image</button>
+    </div>
+    <div class="row">
+      <select id="batchSplit"><option value="all">all labelled</option><option value="tune">tune half</option><option value="report">report half</option></select>
+      <button id="runBatch">Run batch</button>
+      <button id="stop" disabled>Stop</button>
+    </div>
+    <div class="row">
+      <button id="exportLabels">labels.json</button>
+      <button id="exportJson">results.json</button>
+      <button id="exportCsv">results.csv</button>
+    </div>
+    <div id="status"></div>
+  </fieldset>
+</aside>
+
+<section class="view">
+  <div class="legend">
+    <span><i style="background:var(--label)"></i>true target (label)</span>
+    <span><i style="background:var(--direct)"></i>direct</span>
+    <span><i style="background:var(--grid)"></i>grid</span>
+    <span><i style="background:var(--refine)"></i>refine</span>
+    <span>filled = pointer shown to user · hollow = guess withheld ("I can't tell")</span>
+  </div>
+  <div class="stage"><canvas id="view" width="960" height="540"></canvas></div>
+
+  <h2>This image</h2>
+  <table id="oneTable"><thead><tr>
+    <th>Mode</th><th>Result</th><th class="num">Conf.</th><th>Says</th><th class="num">Calls</th><th class="num">Latency</th><th class="num">Tokens in/out</th><th class="num">Cost</th>
+  </tr></thead><tbody></tbody></table>
+
+  <h2>Images sent to the model (last run)</h2>
+  <div id="sent"></div>
+
+  <h2>Batch summary</h2>
+  <p class="hint">Hit = the pointer lands inside the labelled box. Wrong-but-confident = a pointer was shown and missed. Errors (network, rate limits) count as misses in the hit rate. Raw hit rate = what the hit rate would be if the buddy always pointed (no confidence floor). Tune prompts on the tune half; report the report half.</p>
+  <table id="sumTable"><thead><tr>
+    <th>Mode</th><th class="num">n</th><th class="num">Hit rate</th><th class="num">Wrong but confident</th><th class="num">"Can't tell"</th><th class="num">Errors</th><th class="num">Precision when pointing</th><th class="num">Raw hit rate</th><th class="num">Median latency</th><th class="num">Calls / answer</th><th class="num">Cost / answer</th>
+  </tr></thead><tbody></tbody></table>
+
+  <h2>Confidence floor sweep</h2>
+  <p class="hint">For each floor: share of answers that would show a pointer (coverage) and how often those pointers hit (precision). Pick CONFIDENCE_FLOOR on the tune half.</p>
+  <table id="sweepTable"><thead></thead><tbody></tbody></table>
+
+  <h2>Screens with nothing to point at</h2>
+  <p class="hint">Blank and unrelated screens (the + buttons on the left). The right answer is "I can't tell". Batch runs always include them.</p>
+  <table id="negTable"><thead><tr><th>Mode</th><th class="num">n</th><th class="num">Refused (correct)</th><th class="num">Pointed anyway</th></tr></thead><tbody></tbody></table>
+</section>
+</main>
+
+<script type="module" src="./brain-lab.js"></script>
+</body>
+</html>
