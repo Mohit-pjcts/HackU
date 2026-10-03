@@ -13,6 +13,7 @@ import { homedir } from "node:os";
 import { nowIso } from "./logger.ts";
 import { FIND_FIELD, goalValues, MESSAGE_FIELD, openOnly, SEND_INTENT } from "./compile.ts";
 import { perceive, screenFromMarkdown, screenText, signature, TEXT_INPUT } from "./perceive.ts";
+import { clickForbidden, typingForbidden } from "./safety.ts";
 
 export const MAX_STEPS = 25;
 
@@ -748,12 +749,18 @@ export async function runTask(ctx: TaskCtx, task: Task): Promise<Task> {
         if (twins.length > 1) chosen.token = twins.sort((a, b) => b.frame!.w * b.frame!.h - a.frame!.w * a.frame!.h)[0]!.token;
         // SAFETY: a Send button only when the goal asks to send something
         if (/^send\b/i.test(chosen.text.trim()) && !SEND_INTENT.test(task.goal)) { desc = "blocked: the goal does not ask to send anything"; break; }
+        // SAFETY: nothing that spends money or can't be undone unless the goal asks for exactly that
+        const risky = clickForbidden(chosen.text, task.goal);
+        if (risky) { desc = `blocked: ${risky}`; break; }
         results = [await retryStale(await driver.click(agent, win, chosen.token!), (t) => driver.click(agent, win, t))];
         desc = `click '${chosen.text}'`;
         break;
       }
       case "type_text": {
         if (!isTextInput(chosen) || !chosen?.token) { desc = `blocked: '${chosen?.text ?? "?"}' is not a text field`; break; }
+        // SAFETY: never a password, card number or ID: the user does that part
+        const secret = typingForbidden(chosen.text);
+        if (secret) return finish("not_achieved", secret);
         // SAFETY: never add to text the agent did not write (e.g. the body of one of the user's existing notes)
         const editAllowed = /\b(edit|append|add to|update|change|existing|reply)\b/i.test(task.goal);
         const own = typedTexts.some((t) => ((chosen.value ?? "") + " " + chosen.text).includes(t.trim().slice(0, 24)));
@@ -827,7 +834,8 @@ export async function runTask(ctx: TaskCtx, task: Task): Promise<Task> {
         }
         results.push(r);
         // where did it land? if ANOTHER field now holds it, it went to the wrong place: clear that, and don't count it
-        if (r.ok) {
+        // (only when the field has a position to tell it apart by: otherwise it could be mistaken for "another" field)
+        if (r.ok && fieldKey(chosenEl)) {
           const after = await driver.observe(agent, win);
           const head = norm(text).slice(0, 16);
           learnFields(after);

@@ -11,6 +11,7 @@ import { planTasks, runCommand, type PlannedTask } from "./manager.ts";
 import { Explainer, type ToOverlay } from "./explain.ts";
 import { route } from "./router.ts";
 import { spokenSummary, tidyAnswer } from "./results.ts";
+import { fromThisComputer } from "./localonly.ts";
 import type { ServerWebSocket } from "bun";
 
 interface RunRecord {
@@ -135,6 +136,7 @@ export function startPanel(port = Number(process.env.PORT ?? 3000)) {
 
   const server = Bun.serve({
     port,
+    hostname: "127.0.0.1", // this computer only: nobody else on the Wi-Fi can reach the panel or start agents
     idleTimeout: 0,
     websocket: {
       open(ws) { overlays.add(ws); console.log(`[explain] overlay connected (${overlays.size})`); dock(); },
@@ -154,6 +156,7 @@ export function startPanel(port = Number(process.env.PORT ?? 3000)) {
       },
     },
     async fetch(req, srv) {
+      if (!fromThisComputer(req)) return new Response("forbidden", { status: 403 });
       const url = new URL(req.url);
       if (url.pathname === "/overlay") return srv.upgrade(req) ? undefined : new Response("websocket only", { status: 400 });
       const json = (o: unknown, status = 200) => Response.json(o, { status });

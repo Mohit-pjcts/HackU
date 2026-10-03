@@ -15,10 +15,10 @@ This repository holds the two engines of the same product, each tested live on i
 | Overlay (cursors, drawings, widgets) | native Swift app (`mac/overlay/Overlay.swift`) | PowerShell / WPF (`windows/native/win/overlay.ps1`) |
 | Speech to text | on-device macOS speech recognition | faster-whisper, local (`windows/native/win/voice.py`) |
 | Voice | ElevenLabs (falls back to the Mac voice) | ElevenLabs (falls back to the Windows voice) |
-| Tests | `cd mac && bun test` (25) | `cd windows && bun test` (135 + 1 skipped) |
+| Tests | `cd mac && bun test` (29) | `cd windows && bun test` (136 + 1 skipped) |
 | Details | [mac/README.md](mac/README.md) | [windows/README.md](windows/README.md) |
 
-Both engines share the same design: one hotkey for everything, a router that tells a job from a question, one coloured agent per part of the job, a fast lane with Cua Driver as the safe fallback, live widgets, explain mode with lessons, and the same voice. The Windows engine was built after the Mac one and follows its design, colours, router, explain mode, voice and fast lane.
+Both engines share the same design (and the panel only answers this computer: it listens on 127.0.0.1 and refuses requests from other web pages): one hotkey for everything, a router that tells a job from a question, one coloured agent per part of the job, a fast lane with Cua Driver as the safe fallback, live widgets, explain mode with lessons, and the same voice. The Windows engine was built after the Mac one and follows its design, colours, router, explain mode, voice and fast lane.
 
 ## How it works
 
@@ -47,7 +47,7 @@ Common tasks have **skills**: plans built in code before the loop (Calculator ke
 | Maps routes, stock prices, weather | Apple Maps, Stocks, Weather apps | Google Maps, Google Finance, wttr.in |
 | Multi-step jobs where a later part uses an earlier result ("find X then write it in Notepad") | | ✅ |
 | Several jobs at once, each with its own Stop | | ✅ |
-| Approval before irreversible clicks (send, pay, delete…); never types into password or card fields | sending only when asked | ✅ |
+| Never types into password, card or ID fields; no irreversible clicks (pay, delete, send…) the user did not ask for | ✅ (refuses unasked ones) | ✅ (asks for approval) |
 | Flights (to the page before payment), launching games, finding folders by name | | ✅ |
 | Replay a past run, compare jev with an LLM on the same plan, benchmark with independent checks | compare + benchmark | replay |
 

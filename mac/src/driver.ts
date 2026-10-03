@@ -198,10 +198,11 @@ export class CliDriver implements Driver {
     const fail = (why: string): ActionResult => ({ ok: false, channel: "synthetic", ms: Math.round(performance.now() - t0), cli: "paste", error: { code: "other", detail: why } });
     const wr = await cua("clipboard_write", { text, session: agent });
     if (!wr.json || wr.json.error) return fail(`clipboard_write: ${wr.raw.slice(0, 120)}`);
+    // the user's clipboard, back, on every path from here (only text can be put back: Cua reads the clipboard as text)
+    const restore = async () => { if (saved !== null) await cua("clipboard_write", { text: saved, session: agent }); };
     const check = await cua("clipboard_read", { include_text: true, session: agent });
-    if (check.json?.text !== text) return fail("the clipboard does not hold the text");
-    const rc = await this.call(agent, "hotkey", { pid: w.pid, window_id: w.windowId, element_token: token, keys: ["cmd", "v"], session: agent });
-    if (saved !== null) await cua("clipboard_write", { text: saved, session: agent }); // the user's clipboard, back
+    if (check.json?.text !== text) { await restore(); return fail("the clipboard does not hold the text"); }
+    const rc = await this.call(agent, "hotkey", { pid: w.pid, window_id: w.windowId, element_token: token, keys: ["cmd", "v"], session: agent }).finally(restore);
     const r = toResult(rc);
     return { ...r, route: "paste", ms: Math.round(performance.now() - t0), cli: `paste ${text.length} chars (clipboard, Cmd+V)` };
   }

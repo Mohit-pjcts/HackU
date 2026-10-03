@@ -29,6 +29,7 @@ import { codeRoute, route } from "./router";
 import { splitParts } from "./planner";
 import { speak, stopSpeaking } from "./speak";
 import type { Voice } from "./voice";
+import { fromThisComputer } from "./localonly";
 
 export type AppClaude = ClaudeLike & Partial<Pick<Claude, "explain">>;
 export type AppJev = JevLike;
@@ -410,6 +411,7 @@ export class App {
     return Bun.serve({
       port, hostname: "127.0.0.1", idleTimeout: 0,
       fetch: async req => {
+        if (!fromThisComputer(req)) return new Response("forbidden", { status: 403 });
         const url = new URL(req.url), p = url.pathname;
         if (req.method === "GET" && p === "/") return new Response(readFileSync(html), { headers: { "Content-Type": "text/html; charset=utf-8" } });
         if (req.method === "GET" && p === "/events") {

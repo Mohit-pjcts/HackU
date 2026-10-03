@@ -4,7 +4,7 @@
 //   * only inside the one folder the Finder window shows (its direct children), never outside
 //   * never delete, never overwrite (an existing name is skipped and reported)
 //   * every move is written to an undo script you can run
-import { appendFileSync, existsSync, mkdirSync, readdirSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readdirSync, realpathSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import type { AxElement, Observation } from "./contracts.ts";
@@ -24,10 +24,15 @@ export function finderFolder(obs: Observation): string | null {
   return path;
 }
 
+/** a path for the undo script, in single quotes: the shell expands nothing inside them ($(...), `...`, $HOME) */
+const sh = (p: string) => `'${p.replace(/'/g, `'\\''`)}'`;
+
 /** folders an agent may organise: inside your home folder, not the home folder itself, not Library */
 export function safeRoot(dir: string): string | null {
-  const home = homedir();
-  const abs = resolve(dir);
+  const home = realpathSync(homedir());
+  // follow links first: a link inside your home folder can point anywhere
+  let abs = resolve(dir);
+  try { abs = realpathSync(abs); } catch { return "that folder does not exist"; }
   if (!abs.startsWith(home + "/") || abs === home) return "only folders inside your home folder (not the home folder itself) can be organised";
   if (/\/Library(\/|$)|\/\.[^/]+/.test(abs.slice(home.length))) return "system and hidden folders are off limits";
   if (!existsSync(abs) || !statSync(abs).isDirectory()) return "that folder does not exist";
@@ -68,7 +73,7 @@ export class FileOps {
     const p = join(this.root, name);
     if (existsSync(p)) return statSync(p).isDirectory() ? { ok: true, detail: `folder "${name}" already exists` } : { ok: false, detail: `"${name}" exists and is not a folder` };
     mkdirSync(p);
-    appendFileSync(this.undoFile, `rmdir ${JSON.stringify(p)}  # only succeeds if empty\n`);
+    appendFileSync(this.undoFile, `rmdir ${sh(p)}  # only succeeds if empty\n`);
     return { ok: true, detail: `created folder "${name}"` };
   }
 
@@ -81,7 +86,7 @@ export class FileOps {
     const dst = join(dstDir, basename(file));
     if (existsSync(dst)) return { ok: false, detail: `"${folder}/${file}" already exists: not overwriting` };
     renameSync(src, dst);
-    appendFileSync(this.undoFile, `mv ${JSON.stringify(dst)} ${JSON.stringify(src)}\n`);
+    appendFileSync(this.undoFile, `mv ${sh(dst)} ${sh(src)}\n`);
     return { ok: true, detail: `moved "${file}" → ${folder}/` };
   }
 }
