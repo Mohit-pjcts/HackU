@@ -15,7 +15,7 @@ This repository holds the two engines of the same product, each tested live on i
 | Overlay (cursors, drawings, widgets) | native Swift app (`mac/overlay/Overlay.swift`) | PowerShell / WPF (`windows/native/win/overlay.ps1`) |
 | Speech to text | on-device macOS speech recognition | faster-whisper, local (`windows/native/win/voice.py`) |
 | Voice | ElevenLabs (falls back to the Mac voice) | ElevenLabs (falls back to the Windows voice) |
-| Tests | `cd mac && bun test` (29) | `cd windows && bun test` (136 + 1 skipped) |
+| Tests | `cd mac && bun test` (30) | `cd windows && bun test` (136 + 1 skipped) |
 | Details | [mac/README.md](mac/README.md) | [windows/README.md](windows/README.md) |
 
 Both engines share the same design (and the panel only answers this computer: it listens on 127.0.0.1 and refuses requests from other web pages): one hotkey for everything, a router that tells a job from a question, one coloured agent per part of the job, a fast lane with Cua Driver as the safe fallback, live widgets, explain mode with lessons, and the same voice. The Windows engine was built after the Mac one and follows its design, colours, router, explain mode, voice and fast lane.
