@@ -13,7 +13,7 @@
 
 ```mermaid
 flowchart LR
-    U["you: 'compute 76x49 in Calculator and<br/>write a reminder in TextEdit'"] --> D["dispatcher<br/>(Claude Haiku, 1 call)"]
+    U["you: 'compute 76x49 in Calculator and<br/>write a reminder in TextEdit'"] --> D["dispatcher<br/>(code; jev picks the app if none is named)"]
     D --> H1["agent Mint-3<br/>Calculator"]
     D --> H2["agent Red-7<br/>TextEdit"]
     subgraph LOOP["each agent, every step"]
@@ -25,17 +25,17 @@ flowchart LR
         A --> O
     end
     H1 & H2 --> LOOP
-    LOOP --> V["verifier reads the screen<br/>(Claude Haiku): done + answer"]
+    LOOP --> V["verifier: code + jev check the screen<br/>(Claude only if borderline): done + answer"]
 ```
 
-| Piece | What | Cost |
+| Piece | What | Done by (default) |
 |---|---|---|
-| Dispatcher | splits the command into one task per app | 1 Haiku call per command |
-| Planner | concrete steps for the task ("click 7 → click Multiply → …") | 1 Haiku call per task (+1 if the screen disagrees) |
-| **Decision at every step** | **jev: which kind of action, which control** | **~$0.00007 per step** |
-| Writer | free text for a field (only if the plan didn't give it) | rare |
-| Verifier | reads the window text: achieved? what's the answer? | 1 Haiku call at the end |
-| Driver | [Cua Driver](https://github.com/trycua/cua) 0.32 (MIT): background clicks and typing, coloured session cursors | free |
+| Dispatcher | splits the command into one task per app | code; jev picks the app when none is named |
+| Planner | concrete steps for the task ("click 7 → click Multiply → …") | compilers in code, then a plan cache; Claude only when jev is stuck |
+| **Decision at every step** | **jev: which kind of action, which control** | **jev, ~$0.00007 per step** |
+| Writer | free text for a field (only if the plan didn't give it) | Claude, only for creative text |
+| Verifier | reads the window text: achieved? what's the answer? | code and jev; Claude only for borderline verdicts |
+| Driver | [Cua Driver](https://github.com/trycua/cua) 0.32 (MIT): background clicks and typing, coloured session cursors | Cua, on the Mac (free) |
 
 The **"LLM brain"** mode replaces jev with Claude Sonnet choosing every step from the same text. It exists to measure the difference honestly, and **Compare** in the panel runs both on the same plan.
 
@@ -146,7 +146,7 @@ Requirements:
 * macOS 14+ and [Bun](https://bun.sh) 1.4+.
 * [Cua Driver](https://github.com/trycua/cua/tree/main/libs/cua-driver) **0.32.0**, with Accessibility and Screen Recording granted to `CuaDriver.app`.
 * A TypeSafe API key (console.typesafe.ai).
-* An Anthropic API key (for the dispatcher, planner, verifier, and the LLM comparison).
+* An Anthropic API key (optional for jobs, where Claude is only the fallback; needed for explain mode and the LLM comparison).
 
 ```sh
 bun install
@@ -232,7 +232,6 @@ src/llm.ts        Claude calls with structured output and cost accounting
 src/server.ts     live panel API + server-sent events;  viewer/index.html  the panel
 src/cli.ts        run a command from the terminal
 tests/            engine tests on a simulated Calculator
-examples/claims-form-v0/   an earlier, single-purpose prototype (archived)
 ```
 
 ## Integrating with the Windows version

@@ -15,7 +15,7 @@ if (!command) {
   process.exit(1);
 }
 if (brainKind === "jev" && !process.env.TYPESAFE_API_KEY) throw new Error("TYPESAFE_API_KEY missing in .env");
-if (!process.env.ANTHROPIC_API_KEY) console.log("note: no ANTHROPIC_API_KEY: planning uses a simple parser, and the writer/verifier are unavailable");
+if (!process.env.ANTHROPIC_API_KEY) console.log(plannerMode() === "jev" ? "note: no ANTHROPIC_API_KEY: jev runs alone, with no Claude fallback for stuck plans, borderline checks or creative text" : "note: no ANTHROPIC_API_KEY: planning uses a simple parser, and the writer/verifier are unavailable");
 
 const runId = `cli-${brainKind}-${new Date().toISOString().replace(/[:.]/g, "-")}`;
 const log = new RunLogger(runId);
