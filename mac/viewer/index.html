@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Backstage</title>
+<style>
+  :root{--bg:#f5f5f7;--card:#fff;--ink:#1d1d1f;--mute:#6e6e73;--line:#e2e2e7;--accent:#0071e3;
+    --ok:#1a7f37;--okbg:#e7f6ec;--bad:#b42318;--badbg:#fdecea;--warn:#8a5a00;--warnbg:#fff4d6}
+  @media (prefers-color-scheme: dark){:root{--bg:#111214;--card:#1b1c1f;--ink:#f2f2f4;--mute:#9a9aa3;--line:#2c2d31;--accent:#4aa3ff;
+    --ok:#4cd07d;--okbg:#12301f;--bad:#ff8b7e;--badbg:#38191a;--warn:#ffc857;--warnbg:#3a2f12}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif}
+  header{padding:14px 20px;background:var(--card);border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+  h1{margin:0;font-size:19px}.sub{color:var(--mute);font-size:13px}
+  .pill{display:inline-flex;gap:6px;align-items:center;padding:3px 10px;border-radius:99px;border:1px solid var(--line);font-size:12.5px;font-weight:600;background:var(--bg)}
+  .pill.off{color:var(--bad);border-color:var(--bad)}
+  main{padding:16px 20px;display:grid;gap:16px}
+  section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+  h2{margin:0 0 10px;font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--mute)}
+  textarea{width:100%;min-height:62px;resize:vertical;border-radius:10px;border:1px solid var(--line);padding:10px 12px;background:var(--bg);color:var(--ink);font:15px/1.4 inherit}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+  button{padding:8px 14px;border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:14px;cursor:pointer}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.danger{color:var(--bad);border-color:var(--bad)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .seg label{padding:7px 12px;font-size:13.5px;cursor:pointer}.seg input{display:none}.seg input:checked+span{font-weight:700;color:var(--accent)}
+  .chip{display:inline-block;padding:4px 10px;border-radius:99px;background:var(--bg);border:1px dashed var(--line);font-size:12.5px;cursor:pointer;margin:6px 6px 0 0}
+  .err{color:var(--bad);font-size:13.5px;margin-top:6px}
+  .agents{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+  .agent{border:1px solid var(--line);border-radius:12px;padding:12px;border-top:5px solid var(--c);background:var(--bg)}
+  .agent .t{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .badge{display:inline-flex;align-items:center;gap:6px;font-weight:700}.badge i{width:11px;height:11px;border-radius:50%;background:var(--c);display:inline-block}
+  .st{font-size:12px;font-weight:700;padding:2px 9px;border-radius:99px}
+  .st.running{background:var(--warnbg);color:var(--warn)}.st.done{background:var(--okbg);color:var(--ok)}.st.failed{background:var(--badbg);color:var(--bad)}.st.queued{border:1px solid var(--line);color:var(--mute)}
+  .goal{margin:6px 0;font-size:13.5px}.now{font-size:12.5px;color:var(--mute)}
+  .ans{margin-top:6px;font-size:13.5px}.ans.ok{color:var(--ok)}.ans.bad{color:var(--bad)}
+  .plan{margin-top:6px;font-size:12px;color:var(--mute)}
+  .last{margin-top:8px;font-size:12.5px}
+  .bars{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px;font-size:12px;color:var(--mute)}
+  .bar{display:flex;align-items:center;gap:5px}.bar i{width:58px;height:6px;background:var(--line);border-radius:3px;overflow:hidden;display:block}.bar i b{display:block;height:100%;background:var(--accent)}
+  .bar.low i b{background:var(--bad)}
+  .meta{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--mute)}
+  table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{color:var(--mute);font-weight:600;font-size:12px}td.num{font-variant-numeric:tabular-nums;text-align:right}th.num{text-align:right}
+  .tag{font-size:11.5px;padding:1px 7px;border-radius:6px;border:1px solid var(--line)}
+  .tag.jev{color:var(--accent);border-color:var(--accent)}.tag.llm{color:var(--warn);border-color:var(--warn)}
+  #feed{max-height:52vh;overflow:auto;font-size:13px}
+  .ln{padding:6px 0 6px 10px;border-left:4px solid var(--c);margin-bottom:5px}
+  .ln .h{display:flex;justify-content:space-between;gap:8px;color:var(--mute);font-size:12px}
+  .grid2{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}@media (max-width:1000px){.grid2{grid-template-columns:1fr}}
+  .callout{font-size:13px;color:var(--mute);margin-top:8px}
+  .verdict{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--okbg);color:var(--ok);font-weight:600;font-size:14px;display:none}
+  td.cmd{max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Backstage</h1><div class="sub">Tell it what to do. Coloured agents work in your apps' windows in the background. A cheap classifier decides every step instead of an LLM.</div></div>
+  <span class="pill" id="kTs">TypeSafe</span><span class="pill" id="kAn">Anthropic</span><span class="pill" id="speed" style="display:none"></span>
+</header>
+<main>
+  <section>
+    <h2>Command</h2>
+    <textarea id="cmd" placeholder="e.g. Compute 45 times 12 in Calculator, and in TextEdit write a note that the meeting moved to 5pm"></textarea>
+    <div>
+      <span class="chip" data-c="Clear the calculator and compute 128 times 37 in Calculator">Calculator</span>
+      <span class="chip" data-c="In TextEdit, write a three item packing list for a weekend hiking trip">TextEdit</span>
+      <span class="chip" data-c="In Safari, look up the University of Hong Kong on Wikipedia and tell me the year it was founded">Safari</span>
+      <span class="chip" data-c="Clear the calculator and compute 45 times 12 in Calculator, and in TextEdit write a short note saying the team meeting moved to 5pm">Two agents at once</span>
+    </div>
+    <div class="row">
+      <span class="seg"><label><input type="radio" name="brain" value="jev" checked><span>jev (classifier)</span></label><label><input type="radio" name="brain" value="llm"><span id="llmLbl">LLM</span></label></span>
+      <button class="primary" id="run">Run</button>
+      <button id="cmp" title="Runs the same plan with jev, then with the LLM, and adds both to the table">Compare jev vs LLM</button>
+      <button class="danger" id="stop">Stop</button>
+    </div>
+    <div class="err" id="err"></div>
+  </section>
+
+  <section>
+    <h2>Agents <span class="sub" id="runLbl"></span></h2>
+    <div class="agents" id="agents"><div class="sub">No agents working yet.</div></div>
+  </section>
+
+  <div class="grid2">
+    <section>
+      <h2>Live steps</h2>
+      <div id="feed"><div class="sub">Steps appear here as the agents work.</div></div>
+    </section>
+    <section>
+      <h2>Runs: cost and speed</h2>
+      <table><thead><tr><th>Run</th><th>Brain</th><th class="num">Done</th><th class="num">Time</th><th class="num">Decisions</th><th class="num">Median decision</th><th class="num">Decisions $</th><th class="num">LLM helper $</th><th class="num">Total $</th></tr></thead><tbody id="runs"></tbody></table>
+      <div class="verdict" id="verdict"></div>
+      <div class="callout">"Decisions $" is the brain choosing every step. "LLM helper $" covers the one-off plan, the final check and the dispatcher, used by both brains. In Compare, both brains run the same plan.</div>
+    </section>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+let S = null; const lastStep = {};
+const brain = () => document.querySelector("input[name=brain]:checked").value;
+const post = (p, b) => fetch(p, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b || {}) }).then((r) => r.json());
+document.querySelectorAll(".chip").forEach((c) => c.onclick = () => { $("cmd").value = c.dataset.c; });
+$("run").onclick = async () => { $("err").textContent = ""; const r = await post("/api/run", { command: $("cmd").value, brain: brain() }); if (!r.ok) $("err").textContent = r.error; else $("feed").innerHTML = ""; };
+$("cmp").onclick = async () => { $("err").textContent = ""; const r = await post("/api/compare", { command: $("cmd").value }); if (!r.ok) $("err").textContent = r.error; else $("feed").innerHTML = ""; };
+$("stop").onclick = () => post("/api/stop");
+$("cmd").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) $("run").click(); });
+
+const col = (h) => (S && S.colours[h]) || "#888";
+const money = (x) => "$" + (x < 0.001 ? x.toFixed(5) : x.toFixed(4));
+function bar(name, p, conf) {
+  if (conf == null) return "";
+  const top = p ? Object.entries(p).sort((a, b) => b[1] - a[1])[0] : null;
+  return `<span class="bar ${conf < 0.4 ? "low" : ""}">${name}${top ? " " + esc(top[0]) : ""} <i><b style="width:${Math.round(conf * 100)}%"></b></i> ${conf.toFixed(2)}</span>`;
+}
+function renderAgents() {
+  const run = S.runs[0];
+  $("runLbl").textContent = run ? `· ${run.brain === "jev" ? "jev" : "LLM (" + run.model + ")"} · ${run.status}${run.totals ? " · " + run.totals.seconds.toFixed(1) + " s" : ""}` : "";
+  if (!run || !run.tasks.length) { $("agents").innerHTML = '<div class="sub">No agents working yet.</div>'; return; }
+  $("agents").innerHTML = run.tasks.map((t) => {
+    const ls = lastStep[run.runId + "/" + t.id];
+    const d = ls && ls.decision;
+    const item = d && d.item != null ? (ls.items.find((x) => x.i === d.item) || {}).text : "";
+    const res = t.status === "done" ? `<div class="ans ok">✓ ${esc(t.answer || "done")}</div>` : t.status === "failed" ? `<div class="ans bad">✗ ${esc((t.exception || {}).code || "")}: ${esc((t.exception || {}).reason || "")}</div>` : "";
+    const plan = t.plan && t.plan.length ? `<div class="plan">plan: ${t.plan.map((s) => esc(s.action.replace("_", " ") + (s.target ? " " + s.target : "") + (s.text ? ' "' + s.text.slice(0, 24) + (s.text.length > 24 ? "…" : "") + '"' : ""))).join(" → ")}</div>` : "";
+    return `<div class="agent" style="--c:${col(t.agent)}">
+      <div class="t"><span class="badge"><i></i>${esc(t.agent)} · ${esc(t.app)}</span><span class="st ${t.status}">${t.status}</span></div>
+      <div class="goal">${esc(t.goal)}</div>${plan}
+      ${t.now ? `<div class="now">now: ${esc(t.now)}</div>` : ""}
+      ${d ? `<div class="last">step ${ls.step}: <b>${esc(d.kind)}</b>${item ? " → " + esc(item) : ""} <span class="sub">(${esc(ls.acted)})</span><div class="bars">${bar("kind", d.kindP, d.kindConf)}${d.backend === "jev" ? bar("item", d.itemP, d.itemConf) : ""}<span>${d.ms} ms · ${money(d.costUsd)}</span></div></div>` : ""}
+      ${res}
+      <div class="meta"><span title="${esc((t.llmCalls || []).join("\n"))}" style="color:${(t.llmCalls || []).length ? "var(--warn)" : "var(--ok)"}">${(t.llmCalls || []).length ? "LLM ×" + t.llmCalls.length + ": " + esc(t.llmCalls[0].slice(0, 40)) : "no LLM"}</span>${t.counts.foreground ? `<span style="color:var(--warn)">⚠ ${t.counts.foreground} foreground step${t.counts.foreground > 1 ? "s" : ""}</span>` : ""}<span>${t.steps} steps</span><span>${t.seconds.toFixed(1)} s</span><span>decisions ${money(t.cost.decisionsUsd)}</span><span>helper ${money(t.cost.helperUsd)}</span></div></div>`;
+  }).join("");
+}
+function renderRuns() {
+  $("runs").innerHTML = S.runs.map((r) => {
+    const t = r.totals;
+    return `<tr><td class="cmd" title="${esc(r.command)}">${r.compareGroup ? '<span class="sub">compare · </span>' : ""}${esc(r.command)}</td>
+      <td><span class="tag ${r.brain}">${r.brain === "jev" ? "jev" : "LLM"}</span></td>
+      <td class="num">${t ? t.done + "/" + t.tasks : r.status}</td><td class="num">${t ? t.seconds.toFixed(1) + " s" : ""}</td>
+      <td class="num">${t ? t.decisions : ""}</td><td class="num">${t ? t.medianDecideMs + " ms" : ""}</td>
+      <td class="num">${t ? money(t.decisionsUsd) : ""}</td><td class="num">${t ? money(t.helperUsd) : ""}</td><td class="num"><b>${t ? money(t.decisionsUsd + t.helperUsd) : ""}</b></td></tr>`;
+  }).join("") || '<tr><td colspan="9" class="sub">No runs yet.</td></tr>';
+}
+function renderVerdict() {
+  const v = $("verdict");
+  const [a, b] = S.runs;
+  if (!a || !b || !a.compareGroup || a.compareGroup !== b.compareGroup || !a.totals || !b.totals) { v.style.display = "none"; return; }
+  const jev = a.brain === "jev" ? a : b, llm = a.brain === "llm" ? a : b;
+  const J = jev.totals, L = llm.totals;
+  const x = (p, q) => (q > 0 ? (p / q).toFixed(p / q >= 10 ? 0 : 1) + "×" : "–");
+  v.style.display = "";
+  v.textContent = `Same plan, ${J.done}/${J.tasks} vs ${L.done}/${L.tasks} done. Per decision jev was ${x(L.decisionsUsd / Math.max(1, L.decisions), J.decisionsUsd / Math.max(1, J.decisions))} cheaper and ${x(L.medianDecideMs, J.medianDecideMs)} faster; whole run ${x(L.decisionsUsd + L.helperUsd, J.decisionsUsd + J.helperUsd)} cheaper and ${x(L.seconds, J.seconds)} faster.`;
+}
+function render() {
+  $("kTs").className = "pill" + (S.keys.typesafe ? "" : " off"); $("kTs").textContent = "TypeSafe " + (S.keys.typesafe ? "✓" : "missing");
+  $("kAn").className = "pill" + (S.keys.anthropic ? "" : " off"); $("kAn").textContent = "Anthropic " + (S.keys.anthropic ? "✓" : "missing");
+  $("llmLbl").textContent = "LLM (" + S.llmModel + ")";
+  if (S.medianClickMs) { $("speed").style.display = ""; $("speed").textContent = "median click " + Math.round(S.medianClickMs) + " ms"; }
+  ["run", "cmp"].forEach((b) => ($(b).disabled = S.busy)); $("stop").disabled = !S.busy;
+  renderAgents(); renderRuns(); renderVerdict();
+}
+function feed(l) {
+  const f = $("feed"); if (f.querySelector(".sub")) f.innerHTML = "";
+  let h = "";
+  if (l.type === "step") {
+    lastStep[l.runId + "/" + l.taskId] = l;
+    const d = l.decision, item = d.item != null ? (l.items.find((x) => x.i === d.item) || {}).text : "";
+    h = `<div class="ln" style="--c:${col(l.agent)}"><div class="h"><span>${esc(l.agent)} · step ${l.step} · ${esc(d.backend)}</span><span>decide ${d.ms} ms · act ${l.ms.act} ms · ${money(d.costUsd)}</span></div><b>${esc(d.kind)}</b>${item ? " → " + esc(item) : ""} · ${esc(l.acted)}</div>`;
+  } else if (l.type === "helper") {
+    h = `<div class="ln" style="--c:${col(l.agent)}"><div class="h"><span>${esc(l.agent)} · ${esc(l.what)} (LLM helper)</span><span>${l.ms} ms · ${money(l.costUsd)}</span></div>${esc(l.detail.slice(0, 260))}</div>`;
+  } else if (l.type === "task_end") {
+    const t = l.task;
+    h = `<div class="ln" style="--c:${col(t.agent)}"><div class="h"><span>${esc(t.agent)} finished</span><span>${t.seconds.toFixed(1)} s</span></div>${t.status === "done" ? "✓ " + esc(t.answer || "done") : "✗ " + esc(t.exception.reason)}</div>`;
+  } else if (l.type === "run_start") {
+    h = `<div class="ln" style="--c:#888"><div class="h"><span>new run · ${esc(l.brain)}</span></div>${l.tasks.map((t) => esc(t.agent + " → " + t.app + ": " + t.goal)).join("<br>")}</div>`;
+  } else return;
+  f.insertAdjacentHTML("afterbegin", h);
+  if (S) renderAgents();
+}
+const es = new EventSource("/events");
+es.addEventListener("state", (e) => { S = JSON.parse(e.data); render(); });
+es.addEventListener("line", (e) => feed(JSON.parse(e.data)));
+</script>
+</body>
+</html>

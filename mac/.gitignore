@@ -1,0 +1,8 @@
+.env
+node_modules/
+runs/
+*.log
+.DS_Store
+scratch/
+overlay/build/
+native/build/

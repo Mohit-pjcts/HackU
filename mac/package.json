@@ -1,0 +1,24 @@
+{
+  "name": "backstage",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Backstage: a multi-agent assistant for macOS. Tell it tasks; coloured agents do them in background app windows, decided step by step by a cheap classifier instead of an LLM.",
+  "scripts": {
+    "start": "bash scripts/start.sh",
+    "cli": "bun run src/cli.ts",
+    "daemon": "bash scripts/daemon.sh",
+    "test": "bun test",
+    "typecheck": "bunx tsc --noEmit -p .",
+    "record": "bash scripts/start.sh --record",
+    "panel": "bun run src/main.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
+    "@typesafe-ai/sdk": "0.6.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.6.0"
+  }
+}
