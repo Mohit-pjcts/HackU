@@ -108,13 +108,17 @@ export class Explainer {
   constructor(private driver: Driver, private send: (m: ToOverlay) => void, runsDir: string) {
     mkdirSync(runsDir, { recursive: true });
     this.journal = join(runsDir, "explain-journal.jsonl");
+    try { rmSync(join(tmpdir(), "backstage-explain"), { recursive: true, force: true }); } catch { /* screenshots left by an earlier run */ }
     this.voice.warm();
   }
 
   /** the hotkey went down: capture NOW (before the buddy or the typing box can appear on the screen) */
   begin() {
-    this.pending = this.capture();
-    this.pending.then(() => this.send({ type: "captured" }), () => this.send({ type: "captured" }));
+    this.discard(); // a capture nobody asked about (the typing box was cancelled): gone
+    const p = (this.pending = this.capture());
+    p.then(() => this.send({ type: "captured" }), () => this.send({ type: "captured" }));
+    // no question within a minute (Esc, an empty box): the screenshot is deleted, not left in the temp folder
+    setTimeout(() => { if (this.pending === p) this.discard(); }, 60_000);
   }
 
   get inLesson() { return !!this.lesson; }
@@ -145,7 +149,7 @@ export class Explainer {
   /** a question (spoken or typed). Lesson words are handled in code, without an LLM. */
   async ask(text: string, cursor?: Point) {
     const q = text.trim();
-    if (!q) { this.send({ type: "clear" }); return; }
+    if (!q) { this.discard(); this.send({ type: "clear" }); return; }
     const w = q.toLowerCase().replace(/[.!?,]/g, "").trim();
     if (/^(stop|cancel|clear|never ?mind|hide|that's all|thanks|thank you)$/.test(w)) { this.discard(); return this.dismiss(); }
     if (this.lesson && /^(next|next step|continue|go on|ok|okay|done|got it|and then|then what)$/.test(w)) { this.discard(); return this.go("next"); }
@@ -153,8 +157,9 @@ export class Explainer {
     if (!hasClaude()) { this.send({ type: "error", text: "ANTHROPIC_API_KEY is missing in .env" }); return; }
 
     this.send({ type: "status", text: "looking at your screen…" });
-    const cap = await (this.pending ?? this.capture());
+    const mine = this.pending; // taken now, so the one-minute clean-up can't delete it while it's in use
     this.pending = undefined;
+    const cap = await (mine ?? this.capture());
     if (!cap.png) { this.send({ type: "error", text: `could not see the screen: ${cap.error ?? "no capture"}` }); return; }
     try {
       this.send({ type: "status", text: "thinking…" });

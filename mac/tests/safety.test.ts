@@ -46,3 +46,20 @@ test("a link inside the home folder cannot lead outside it", () => {
   symlinkSync(tmpdir(), link);
   try { expect(safeRoot(link)).not.toBeNull(); } finally { rmSync(link); }
 });
+
+test("two places in one app stay two tasks, run one after the other; a 10th task waits for its agent name", async () => {
+  const { mergeSameApp, waitsFor } = await import("../src/manager.ts");
+  const m = mergeSameApp([
+    { app: "Finder", goal: "organise by type", url: "/a" },
+    { app: "Finder", goal: "organise by name", url: "/b" },
+    { app: "Calculator", goal: "7 x 8" },
+    { app: "calculator", goal: "9 x 9" },
+  ] as any);
+  expect(m.map((t) => t.url ?? "")).toEqual(["/a", "/b", ""]);
+  expect(m[2]!.goal).toBe("7 x 8 Then: 9 x 9");
+  const tasks = m.map((t, i) => ({ app: t.app, agent: `agent${i % 9}` }));
+  expect(tasks.map((_, i) => waitsFor(tasks, i))).toEqual([-1, 0, -1]);
+  const ten = Array.from({ length: 10 }, (_, i) => ({ app: `App${i}`, agent: `agent${i % 9}` }));
+  expect(waitsFor(ten, 9)).toBe(0);
+  expect(waitsFor(ten, 5)).toBe(-1);
+});

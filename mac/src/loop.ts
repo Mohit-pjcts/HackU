@@ -71,7 +71,7 @@ export async function runTask(ctx: TaskCtx, task: Task): Promise<Task> {
   const notReached = new Set<string>(); // clicked, but it did not become the open content
   const fieldKey = (e?: AxElement) => (e?.frame ? `${e.role}@${Math.round(e.frame.x)},${Math.round(e.frame.y)}` : "");
   let lastTyped: { id: string; label: string; text: string; foreground: boolean } | undefined;
-  let retyped = false;
+  const retyped = new Set<string>(); // one re-type per field and text (not one for the whole task)
   let baseline: string[] | undefined; // the screen text when the task started
   let waitedAfterSend = false;
   let fileOps: FileOps | undefined;
@@ -874,12 +874,13 @@ export async function runTask(ctx: TaskCtx, task: Task): Promise<Task> {
         if (k === "return" && lastTyped) {
           const f = p.items.find((i) => isTextInput(i) && (i.id === lastTyped!.id || i.text === lastTyped!.label));
           if (f?.token && f.value !== undefined && !norm(f.value).includes(norm(lastTyped.text))) {
-            if (retyped) {
+            const retypeKey = `${lastTyped.id}|${lastTyped.text}`;
+            if (retyped.has(retypeKey)) {
               desc = `blocked: the field still does not contain the typed text ("${norm(f.value).slice(0, 40)}"), not sending`;
               logStep(desc, [], 0);
               return finish("driver_refused", `typing did not land correctly in '${f.text}', so it was not sent`);
             }
-            retyped = true;
+            retyped.add(retypeKey);
             results.push(await driver.setValue(agent, win, f.token, ""));
             results.push(await driver.typeText(agent, win, f.token, lastTyped.text, lastTyped.foreground));
             if (lastTyped.foreground) task.counts.foreground++;

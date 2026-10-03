@@ -201,6 +201,23 @@ export interface RunOpts {
   plannerMode?: PlannerMode;
 }
 
+/** one task per app and place: the same app and the same place (or none) become one goal, "… Then: …" */
+export function mergeSameApp(plan: PlannedTask[]): PlannedTask[] {
+  const merged: PlannedTask[] = [];
+  for (const t of plan) {
+    const same = merged.find((m) => m.app.toLowerCase() === t.app.toLowerCase() && (m.url ?? "") === (t.url ?? ""));
+    if (same) same.goal += ` Then: ${t.goal}`;
+    else merged.push({ ...t });
+  }
+  return merged;
+}
+
+/** the earlier task this one must wait for (same app, or same agent name), or -1 to start at once */
+export function waitsFor(tasks: { app: string; agent: string }[], i: number): number {
+  const me = tasks[i]!;
+  return tasks.findLastIndex((t, j) => j < i && (t.app.toLowerCase() === me.app.toLowerCase() || t.agent === me.agent));
+}
+
 export async function runCommand(o: RunOpts): Promise<{ tasks: Task[]; totals: RunTotals; plan: PlannedTask[]; planCostUsd: number }> {
   const t0 = performance.now();
   const apps = await o.driver.listApps();
@@ -211,13 +228,9 @@ export async function runCommand(o: RunOpts): Promise<{ tasks: Task[]; totals: R
     plan = p.tasks;
     planCostUsd = p.costUsd;
   }
-  // never two agents on one app: merge
-  const merged: PlannedTask[] = [];
-  for (const t of plan) {
-    const same = merged.find((m) => m.app.toLowerCase() === t.app.toLowerCase());
-    if (same) same.goal += ` Then: ${t.goal}`;
-    else merged.push({ ...t });
-  }
+  // never two agents on one app at once: the same app and the same place merge into one goal; a different place (another
+  // folder, another link) stays its own task and waits for that app's earlier task (below), so its link isn't lost
+  const merged = mergeSameApp(plan);
   const tasks: Task[] = merged.map((t, i) => ({
     id: `t${i + 1}`,
     agent: AGENT_NAMES[i % AGENT_NAMES.length]!,
@@ -234,8 +247,20 @@ export async function runCommand(o: RunOpts): Promise<{ tasks: Task[]; totals: R
   o.log.write({ type: "run_start", runId: o.runId, t: nowIso(), command: o.command, brain: o.brainKind, tasks });
   o.onUpdate?.(tasks);
 
+  // a task waits for the earlier one on the same app, and for the earlier one with the same agent name (only 9 names:
+  // the 10th task is the 1st one's agent again); everything else runs at the same time
+  const runs: Promise<void>[] = [];
   await Promise.all(
-    tasks.map(async (task, i) => {
+    tasks.map((task, i) => (runs[i] = (async () => {
+      const before = waitsFor(tasks, i);
+      if (before >= 0) await runs[before];
+      if (o.signal.aborted) {
+        task.status = "failed";
+        task.exception = { code: "stopped", reason: "stopped before it started" };
+        o.log.write({ type: "task_end", runId: o.runId, t: nowIso(), task });
+        o.onUpdate?.(tasks);
+        return;
+      }
       const app = matchApp(apps, task.app);
       if (!app) {
         task.status = "failed";
@@ -259,9 +284,9 @@ export async function runCommand(o: RunOpts): Promise<{ tasks: Task[]; totals: R
       } finally {
         o.onUpdate?.(tasks);
       }
-    }),
+    })())),
   );
-  for (const t of tasks) await o.driver.endSession(t.agent).catch(() => {});
+  for (const agent of new Set(tasks.map((t) => t.agent))) await o.driver.endSession(agent).catch(() => {});
   const totals = totalsOf(tasks, (performance.now() - t0) / 1000);
   totals.helperUsd += planCostUsd;
   o.log.write({ type: "run_end", runId: o.runId, t: nowIso(), totals, tasks });

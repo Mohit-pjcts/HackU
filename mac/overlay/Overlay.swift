@@ -793,6 +793,7 @@ final class Listener {
   private let recognizer = SFSpeechRecognizer(locale: Locale.current) ?? SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
   private(set) var text = ""
   private var finished: ((String) -> Void)?
+  private var session = 0 // each hold is one session: a late result from the last hold must not act on this one
 
   static func askPermission() {
     SFSpeechRecognizer.requestAuthorization { _ in }
@@ -805,6 +806,11 @@ final class Listener {
 
   func start(partial: @escaping (String) -> Void) -> Bool {
     guard ready, let recognizer else { return false }
+    if finished != nil { finish() } // the last hold's words were still on their way: it gets what was heard so far
+    task?.cancel()
+    task = nil
+    session += 1
+    let id = session
     text = ""
     let req = SFSpeechAudioBufferRecognitionRequest()
     req.shouldReportPartialResults = true
@@ -818,13 +824,13 @@ final class Listener {
     engine.prepare()
     do { try engine.start() } catch { return false }
     task = recognizer.recognitionTask(with: req) { [weak self] result, error in
-      guard let self else { return }
-      if let r = result {
-        self.text = r.bestTranscription.formattedString
-        DispatchQueue.main.async { partial(self.text) }
-      }
-      if error != nil || (result?.isFinal ?? false) {
-        DispatchQueue.main.async { self.finish() }
+      DispatchQueue.main.async {
+        guard let self, self.session == id else { return }
+        if let r = result {
+          self.text = r.bestTranscription.formattedString
+          partial(self.text)
+        }
+        if error != nil || (result?.isFinal ?? false) { self.finish() }
       }
     }
     return true
@@ -833,10 +839,14 @@ final class Listener {
   /** stop listening; `done` gets the final text (or what was heard so far, after at most 1.2 s) */
   func stop(_ done: @escaping (String) -> Void) {
     finished = done
+    let id = session
     engine.stop()
     engine.inputNode.removeTap(onBus: 0)
     request?.endAudio()
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in self?.finish() }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+      guard let self, self.session == id else { return }
+      self.finish()
+    }
   }
 
   private func finish() {
