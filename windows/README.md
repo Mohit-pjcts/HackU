@@ -62,6 +62,9 @@ evidence file.
 - The fast lane acts only on the exact control the agent saw (same app, control type, name and position within 3
   pixels), never types inside web pages, and reports typing as done only when the field really changed; anything else
   goes through Cua. It never acts after it has been waiting, so a click is never done twice.
+- Agents work behind your windows. When an app ignores input sent in the background (the web page inside WhatsApp or
+  Discord, a chat row that only opens on a real click, a game launcher), its window comes to the front for a moment,
+  the click or keys go in for real (the pointer moves there and straight back), and your window goes back in front.
 - Say "stop" (or press Stop) to abort at the next step.
 
 ## Quick start: Windows
@@ -86,7 +89,8 @@ Run from a normal PowerShell, never as administrator.
    uv pip install --python native\win\.venv\Scripts\python.exe -r native\win\requirements.txt
    native\win\.venv\Scripts\python.exe native\win\voice.py --check
    ```
-   The first start downloads the `small` speech model (about 480 MB). Settings > Privacy > Microphone must allow desktop apps.
+   The first start downloads the English `small.en` speech model (about 480 MB; it uses `small` if that can't be had).
+   Settings > Privacy > Microphone must allow desktop apps.
 5. `powershell -ExecutionPolicy Bypass -File scripts\start.ps1` starts the daemon, runs the preflight and opens the panel
    at http://127.0.0.1:3000/. Or step by step: `scripts\daemon.ps1`, `bun run preflight`, `bun start`. The daemon is
    started with the Mac version's speed setting (300 ms window-change wait); if it was already running,
@@ -116,7 +120,8 @@ voice helpers as in [native/mac/README.md](native/mac/README.md) (Right-Option);
   questions are about the window you were using before the panel; or type one, press **Point & ask**, and point within
   3 seconds.
 - **The buddy and the widgets.** A small buddy follows your cursor and shows listening / thinking / the answer, then
-  flies to what it is explaining. While agents work, each has a widget in the bottom-right corner (drag them anywhere):
+  flies to what it is explaining; near a screen edge its answer moves so none of it is cut off. While agents work, each
+  has a widget in the bottom-right corner (drag them anywhere; its × hides that widget, the agent keeps working):
   its colour, its app, what it is doing now, a running clock, its result, and a **live preview of the window it works
   in** (about once a second, even when that window is behind others; a grid of 1-3 columns for up to 9 agents; the
   tray menu turns previews off). Parts waiting for a browser window or app say so. Every press or text insert flashes a ring in the agent's colour where it happened. The tray icon has Ask,
@@ -132,6 +137,17 @@ voice helpers as in [native/mac/README.md](native/mac/README.md) (Right-Option);
   into Windows, a few milliseconds each) instead of Cua's single input lane (about 0.6 s each), so agents in different
   apps really act at the same time. Anything it can't do safely goes through Cua (`FAST_INPUT=off` turns it off). The
   panel shows how many actions went each way.
+- **Any app.** What an app drops in the background is done with its window in front for a moment (above). An app that
+  shows nothing to accessibility tools (Epic Games Launcher, custom-drawn apps) is operated, with Claude, from
+  pictures of its window: it clicks, types and presses keys there, and says when a game is updating or needs a sign-in.
+  Games it knows (Fortnite, CS2, Dota 2...) start straight from their launcher's own link.
+- **Hearing it right.** The recording keeps a moment from before the keys were down and after they came up (a clipped
+  first or last word is the commonest mishearing). Speech-to-text uses beam search and a hint of the names you say: the
+  apps, people and artists of the jobs that went well are remembered (`runs/voice-words.json`; `VOICE_WORDS` in `.env`
+  adds your own). A word it was unsure of that sounds like one of those names is corrected ("defin" -> "deafen"). A job
+  it is still unsure of is never done on a guess: it shows and says what it heard and waits ("Did you say ...? Say yes,
+  or say it again"; "no, play Drake" corrects it; the words are also in the panel's box to fix by typing). Every job
+  shows the words it heard ("On it: ..."), and the panel's feed lists each one.
 - **Approvals** appear at the top of the panel and are said out loud; hold Ctrl+Win and say "yes" or "no", or click.
 - **The panel** (the Mac version's design): command box with examples, agent cards with each one's colour, live steps
   (who decided each one: jev or Claude, and whether it went through the fast lane), tasks with their answers and
@@ -189,8 +205,9 @@ image and PDF conversion tests need Windows (System.Drawing, Chrome or Edge).
 
 ## Honest limits
 
-- Electron apps (Slack, Discord, the Claude app) show few controls to accessibility tools, so explain mode without
-  Claude can only name the window there, and the fast lane leaves them to Cua.
+- Electron and WebView2 apps (WhatsApp, Slack, Discord, the Claude app) show few controls to accessibility tools, so
+  explain mode without Claude can only name the window there, and typing into them takes their window to the front for
+  a moment. Without Claude, an app that shows nothing at all can't be used.
 - The agent's browser is not signed in anywhere, so mail, calendars and shopping carts need you.
 - jev alone does well when the plan is clear; open-ended multi-page tasks need Claude.
 - Two browser windows and two app hands: a third web part (or third app) waits for one to be free, and two parts in
